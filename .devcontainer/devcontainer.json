@@ -1,0 +1,24 @@
+{
+    "image": "pytorch/pytorch:2.6.0-cuda12.6-cudnn9-devel",
+    "name": "gripper-touch-localization",
+    "runArgs": [
+        "--name", "gripper-touch-localization",
+        "--net", "host",
+        "--gpus", "all",
+        "--shm-size=16g",
+        "-e", "PYTHONUNBUFFERED=1",
+        "-e", "DISPLAY=:0",
+        "-v", "/tmp/.X11-unix:/tmp/.X11-unix:rw"
+    ],
+    "postCreateCommand": "bash -c 'apt-get update && apt-get install -y git libgl1 libglib2.0-0 && pip install -r requirements.txt'",
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "ms-python.python",
+                "ms-toolsai.jupyter",
+                "ms-python.autopep8"
+            ]
+        }
+    }
+
+}

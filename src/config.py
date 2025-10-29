@@ -50,23 +50,7 @@ def update_hyperparams_from_args(hyperparams: Dict[str, Any], args: argparse.Nam
     """Update hyperparameters with command line arguments (override YAML)"""
     updated = hyperparams.copy()
     
-    # Model hyperparameters
-    if hasattr(args, 'hidden_channels') and args.hidden_channels is not None:
-        updated['hidden_channels'] = args.hidden_channels
-    if hasattr(args, 'kernel_size') and args.kernel_size:
-        updated['kernel_size'] = args.kernel_size
-    if hasattr(args, 'dropout') and args.dropout is not None:
-        updated['dropout'] = args.dropout
-    if hasattr(args, 'weight_decay') and args.weight_decay is not None:
-        updated['weight_decay'] = args.weight_decay
-    
-    # Training hyperparameters
-    if hasattr(args, 'epochs') and args.epochs is not None:
-        updated['epochs'] = args.epochs
-    if hasattr(args, 'batch_size') and args.batch_size is not None:
-        updated['batch_size'] = args.batch_size
-    if hasattr(args, 'lr') and args.lr is not None:
-        updated['learning_rate'] = args.lr
+    # Only check for CLI arguments that actually exist
     if hasattr(args, 'test_size') and args.test_size is not None:
         updated['test_size'] = args.test_size
     

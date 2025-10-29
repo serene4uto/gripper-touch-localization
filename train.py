@@ -8,10 +8,11 @@ import torch
 import time
 import os
 import argparse
+import shutil
 from datetime import datetime
 from src.data import load_data, get_dataloaders
 from src.model import ConvLSTMRegressor
-from src.trainer import train_model, plot_losses, evaluate_model
+from src.trainer import train_model, plot_losses, evaluate_model, resume_training
 from src.config import load_hyperparams, update_hyperparams_from_args, print_hyperparams
 
 def parse_args():
@@ -19,8 +20,8 @@ def parse_args():
     parser = argparse.ArgumentParser(description='Train ConvLSTM for gripper touch localization')
     
     # Config file argument
-    parser.add_argument('--config', type=str, default='config/config.yaml',
-                        help='Path to YAML configuration file (default: config/config.yaml)')
+    parser.add_argument('--train-config', type=str, default='/workspaces/gripper-touch-localization/config/train/default_cfg.yaml',
+                        help='Path to YAML training configuration file (default: /workspaces/gripper-touch-localization/config/train/default_cfg.yaml)')
     
     # Data arguments
     parser.add_argument('--data-path', type=str, default='dataset/SizeTrain.csv',
@@ -32,29 +33,12 @@ def parse_args():
     parser.add_argument('--exp-name', type=str, default=None,
                         help='Experiment name (default: exp_YYYYMMDD_HHMMSS)')
     
-    # Model arguments
-    parser.add_argument('--hidden-channels', type=int, default=64,
-                        help='Number of hidden channels in ConvLSTM (default: 64)')
-    parser.add_argument('--kernel-size', type=int, nargs=2, default=[1, 3],
-                        help='Kernel size for ConvLSTM (default: 1 3)')
-    parser.add_argument('--dropout', type=float, default=0.5,
-                        help='Dropout rate (default: 0.5)')
-    
-    # Training arguments
-    parser.add_argument('--epochs', type=int, default=250,
-                        help='Number of training epochs (default: 250)')
-    parser.add_argument('--batch-size', type=int, default=8,
-                        help='Batch size (default: 8)')
-    parser.add_argument('--lr', type=float, default=0.0001,
-                        help='Learning rate (default: 0.0001)')
-    parser.add_argument('--weight-decay', type=float, default=0.001,
-                        help='Weight decay for L2 regularization (default: 0.001)')
+    # Note: Model and training hyperparameters are now managed via config.yaml
+    # Use --config to specify a different config file
     
     # Other arguments
     parser.add_argument('--device', type=str, default='auto',
                         help='Device to use (cpu/cuda/auto) (default: auto)')
-    parser.add_argument('--save-path', type=str, default='gripper_model.pth',
-                        help='Path to save trained model (default: gripper_model.pth)')
     parser.add_argument('--no-plot', action='store_true',
                         help='Disable loss plotting')
     parser.add_argument('--log-dir', type=str, default='runs',
@@ -76,7 +60,7 @@ def main():
     print("🚀 Starting Gripper Touch Localization Training...")
     
     # Load hyperparameters from config file
-    hyperparams = load_hyperparams(args.config)
+    hyperparams = load_hyperparams(args.train_config)
     
     # Override with command line arguments if provided
     hyperparams = update_hyperparams_from_args(hyperparams, args)
@@ -129,16 +113,27 @@ def main():
     # Set up TensorBoard logging
     if args.no_tensorboard:
         log_dir = None
+        logs_dir = None
         checkpoint_dir = args.save_dir
+        # Copy config to save directory when TensorBoard is disabled
+        os.makedirs(checkpoint_dir, exist_ok=True)
+        config_dest = os.path.join(checkpoint_dir, 'config.yaml')
+        shutil.copy2(args.train_config, config_dest)
+        print(f"📄 Config saved to: {config_dest}")
     else:
         log_dir = os.path.join(args.log_dir, exp_name)
         checkpoint_dir = os.path.join(log_dir, 'checkpoint')
         # Create logs subdirectory for TensorBoard events
         logs_dir = os.path.join(log_dir, 'logs')
+        
+        # Create experiment directory and copy config file
+        os.makedirs(log_dir, exist_ok=True)
+        config_dest = os.path.join(log_dir, 'config.yaml')
+        shutil.copy2(args.train_config, config_dest)
+        print(f"📄 Config saved to: {config_dest}")
     
     # Check if resuming from checkpoint
     if args.resume:
-        from src.trainer import resume_training
         train_losses, val_losses, train_maes, val_maes = resume_training(
             model, train_loader, test_loader, args.resume,
             epochs=hyperparams['epochs'], lr=hyperparams['learning_rate'], device=device,
@@ -171,9 +166,16 @@ def main():
         print(f"📊 TensorBoard logs saved to: {logs_dir}")
         print(f"   View with: tensorboard --logdir {logs_dir}")
     
-    # Save model
-    torch.save(model.state_dict(), args.save_path)
-    print(f"💾 Model saved as '{args.save_path}'")
+    # Save model to experiment directory
+    if log_dir:
+        # Save to experiment directory when TensorBoard is enabled
+        model_path = os.path.join(log_dir, 'model.pth')
+    else:
+        # Save to checkpoint directory when TensorBoard is disabled
+        model_path = os.path.join(checkpoint_dir, 'model.pth')
+    
+    torch.save(model.state_dict(), model_path)
+    print(f"💾 Model saved as '{model_path}'")
     
     print(f"✅ Training Complete! (Experiment: {exp_name})")
 

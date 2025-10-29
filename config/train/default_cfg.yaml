@@ -1,5 +1,5 @@
-# ConvLSTM Model Hyperparameters
-# Focus on core model and training hyperparameters
+# ConvLSTM Training Configuration
+# Default hyperparameters for training the gripper touch localization model
 
 # Model Architecture
 hidden_channels: 64

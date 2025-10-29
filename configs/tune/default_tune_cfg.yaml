@@ -42,7 +42,7 @@ data:
 tuning:
   n_trials: 50
   timeout: 3600  # 1 hour timeout
-  direction: "minimize"  # minimize MAE
-  metric: "val_mae"  # target metric for optimization
+  direction: "maximize"  # maximize R² score
+  metric: "val_r2"  # target metric for optimization
   pruner: "median"  # pruning strategy
   sampler: "tpe"  # sampling strategy

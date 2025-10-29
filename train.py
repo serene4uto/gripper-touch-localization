@@ -134,14 +134,14 @@ def main():
     
     # Check if resuming from checkpoint
     if args.resume:
-        train_losses, val_losses, train_maes, val_maes = resume_training(
+        train_losses, val_losses, train_maes, val_maes, train_rmses, val_rmses, train_r2s, val_r2s, train_mapes, val_mapes, best_metrics = resume_training(
             model, train_loader, test_loader, args.resume,
             epochs=hyperparams['epochs'], lr=hyperparams['learning_rate'], device=device,
             log_dir=logs_dir, weight_decay=hyperparams['weight_decay'],
             save_dir=checkpoint_dir
         )
     else:
-        train_losses, val_losses, train_maes, val_maes = train_model(
+        train_losses, val_losses, train_maes, val_maes, train_rmses, val_rmses, train_r2s, val_r2s, train_mapes, val_mapes, best_metrics = train_model(
             model, train_loader, test_loader, 
             epochs=hyperparams['epochs'], lr=hyperparams['learning_rate'], device=device,
             log_dir=logs_dir, weight_decay=hyperparams['weight_decay'],
@@ -157,9 +157,18 @@ def main():
     print(f"Test Loss (MSE): {test_loss:.4f}")
     print(f"Test MAE: {test_mae:.4f}")
     
+    # Print best results summary
+    print("\n🏆 Best Results Summary:")
+    print(f"   Best Validation Loss: {best_metrics['best_val_loss']:.4f} (Epoch {best_metrics['best_epoch_loss']})")
+    print(f"   Best Validation MAE:  {best_metrics['best_val_mae']:.4f} (Epoch {best_metrics['best_epoch_mae']})")
+    print(f"   Best Validation RMSE: {best_metrics['best_val_rmse']:.4f} (Epoch {best_metrics['best_epoch_rmse']})")
+    print(f"   Best Validation R²:   {best_metrics['best_val_r2']:.4f} (Epoch {best_metrics['best_epoch_r2']})")
+    print(f"   Best Validation MAPE: {best_metrics['best_val_mape']:.4f} (Epoch {best_metrics['best_epoch_mape']})")
+    
     # Plot results
     if not args.no_plot:
-        plot_losses(train_losses, val_losses, train_maes, val_maes)
+        plot_losses(train_losses, val_losses, train_maes, val_maes, 
+                   train_rmses, val_rmses, train_r2s, val_r2s, train_mapes, val_mapes)
     
     # TensorBoard info
     if log_dir:
@@ -176,6 +185,43 @@ def main():
     
     torch.save(model.state_dict(), model_path)
     print(f"💾 Model saved as '{model_path}'")
+    
+    # Save best results to text file
+    results_dir = log_dir if log_dir else checkpoint_dir
+    best_results_path = os.path.join(results_dir, 'best_results.txt')
+    
+    with open(best_results_path, 'w') as f:
+        f.write("=" * 60 + "\n")
+        f.write("TRAINING RESULTS SUMMARY\n")
+        f.write("=" * 60 + "\n")
+        f.write(f"Experiment Name: {exp_name}\n")
+        f.write(f"Training Time: {training_time:.2f} seconds\n")
+        f.write(f"Total Epochs: {hyperparams['epochs']}\n")
+        f.write(f"Device: {device}\n")
+        f.write("\n")
+        f.write("BEST VALIDATION METRICS:\n")
+        f.write("-" * 30 + "\n")
+        f.write(f"Best Validation Loss: {best_metrics['best_val_loss']:.6f} (Epoch {best_metrics['best_epoch_loss']})\n")
+        f.write(f"Best Validation MAE:  {best_metrics['best_val_mae']:.6f} (Epoch {best_metrics['best_epoch_mae']})\n")
+        f.write(f"Best Validation RMSE: {best_metrics['best_val_rmse']:.6f} (Epoch {best_metrics['best_epoch_rmse']})\n")
+        f.write(f"Best Validation R²:   {best_metrics['best_val_r2']:.6f} (Epoch {best_metrics['best_epoch_r2']})\n")
+        f.write(f"Best Validation MAPE: {best_metrics['best_val_mape']:.6f} (Epoch {best_metrics['best_epoch_mape']})\n")
+        f.write("\n")
+        f.write("FINAL TEST METRICS:\n")
+        f.write("-" * 20 + "\n")
+        f.write(f"Test Loss (MSE): {test_loss:.6f}\n")
+        f.write(f"Test MAE:        {test_mae:.6f}\n")
+        f.write("\n")
+        f.write("HYPERPARAMETERS:\n")
+        f.write("-" * 15 + "\n")
+        for key, value in hyperparams.items():
+            f.write(f"{key}: {value}\n")
+        f.write("\n")
+        f.write("=" * 60 + "\n")
+        f.write(f"Results saved at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+        f.write("=" * 60 + "\n")
+    
+    print(f"📊 Best results saved to: {best_results_path}")
     
     print(f"✅ Training Complete! (Experiment: {exp_name})")
 

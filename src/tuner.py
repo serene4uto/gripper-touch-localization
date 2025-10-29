@@ -15,7 +15,8 @@ from datetime import datetime
 
 from .data import load_data, get_dataloaders
 from .model import ConvLSTMRegressor
-from .trainer import train_model, evaluate_model
+from .trainer import train_model
+from .metrics import calculate_r2_score
 
 
 class OptunaTuner:
@@ -56,9 +57,9 @@ class OptunaTuner:
                 batch_size=params['batch_size']
             )
             
-            # Train model with early stopping based on validation MAE
+            # Train model with early stopping based on validation R² score
             try:
-                train_losses, val_losses, train_maes, val_maes = train_model(
+                train_losses, val_losses, train_maes, val_maes, train_rmses, val_rmses, train_r2s, val_r2s, train_mapes, val_mapes = train_model(
                     model, train_loader, test_loader,
                     epochs=params['epochs'],
                     lr=params['learning_rate'],
@@ -68,20 +69,20 @@ class OptunaTuner:
                     save_dir=None  # No checkpointing during tuning
                 )
                 
-                # Return best validation MAE as the metric to minimize
-                final_val_mae = min(val_maes)
+                # Return best validation R² score as the metric to maximize
+                final_val_r2 = max(val_r2s)
                 
-                # Report intermediate values for pruning
-                for epoch, (train_loss, val_loss, train_mae, val_mae) in enumerate(
-                    zip(train_losses, val_losses, train_maes, val_maes)
+                # Report intermediate values for pruning (using negative R² since Optuna minimizes)
+                for epoch, (train_loss, val_loss, train_mae, val_mae, train_r2, val_r2) in enumerate(
+                    zip(train_losses, val_losses, train_maes, val_maes, train_r2s, val_r2s)
                 ):
-                    trial.report(val_mae, epoch)
+                    trial.report(-val_r2, epoch)  # Negative because we want to maximize R²
                     
                     # Check if trial should be pruned
                     if trial.should_prune():
                         raise optuna.TrialPruned()
                 
-                return final_val_mae
+                return -final_val_r2  # Return negative because Optuna minimizes
                 
             except Exception as e:
                 print(f"Trial failed with error: {e}")
@@ -208,7 +209,7 @@ class OptunaTuner:
         self.best_score = self.study.best_value
         
         print(f"✅ Tuning completed!")
-        print(f"🎯 Best validation MAE: {self.best_score:.4f}")
+        print(f"🎯 Best validation R²: {self.best_score:.4f}")
         print(f"🏆 Best parameters: {self.best_params}")
         
         # Save results

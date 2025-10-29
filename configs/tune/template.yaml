@@ -1,0 +1,49 @@
+data:
+  test_size:
+    high: 0.4
+    low: 0.1
+    type: uniform
+model:
+  dropout:
+    high: 0.7
+    low: 0.1
+    type: uniform
+  hidden_channels:
+    choices:
+    - 32
+    - 64
+    - 128
+    - 256
+    type: categorical
+  kernel_size:
+    choices:
+    - - 1
+      - 3
+    - - 3
+      - 3
+    - - 5
+      - 5
+    type: categorical
+training:
+  batch_size:
+    choices:
+    - 4
+    - 8
+    - 16
+    - 32
+    type: categorical
+  learning_rate:
+    high: 0.01
+    low: 1.0e-05
+    type: loguniform
+  weight_decay:
+    high: 0.1
+    low: 1.0e-05
+    type: loguniform
+tuning:
+  direction: minimize
+  metric: val_mae
+  n_trials: 50
+  pruner: median
+  sampler: tpe
+  timeout: 3600

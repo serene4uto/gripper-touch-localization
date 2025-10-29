@@ -231,19 +231,38 @@ def main():
     # Load model
     model, hyperparams = load_model(args.model_path, args.config_path, device)
     
-    # Load evaluation data
+    # Load evaluation data (ALL data, no splitting)
     print("📊 Loading evaluation data...")
-    X_train, X_test, y_train, y_test, scaler = load_data(
-        csv_path=args.data_path, 
-        test_size=0.0  # Use all data for evaluation
-    )
-    print(f"Evaluation samples: {len(X_test)}")
+    import pandas as pd
+    from sklearn.preprocessing import StandardScaler
     
-    # Create evaluation dataloader
-    _, eval_loader = get_dataloaders(
-        X_train, X_test, y_train, y_test, 
-        batch_size=hyperparams['batch_size']
-    )
+    # Load and preprocess data using the same logic as training
+    df = pd.read_csv(args.data_path)
+    features = ["S1", "S2", "S3", "SIZE", "STD_POINT", "FORCE"]
+    target = "AREA_AVG"
+    
+    X = df[features].values  # Use same features as training
+    y = df[target].values    # Use same target as training
+    
+    print(f"Data shape: {X.shape}, Target shape: {y.shape}")
+    
+    # Scale features using the same scaler as training (MinMaxScaler)
+    from sklearn.preprocessing import MinMaxScaler
+    scaler = MinMaxScaler()
+    X_scaled = scaler.fit_transform(X)
+    
+    # Reshape for ConvLSTM: (samples, timesteps, channels, height, width)
+    # Original: 6 features -> reshape to (1, 2, 1, 3) = 6 elements
+    X_scaled = X_scaled.reshape(-1, 1, 2, 1, 3)  # (N, T=1, C=2, H=1, W=3)
+    
+    print(f"Evaluation samples: {len(X_scaled)}")
+    
+    # Create evaluation dataset and dataloader
+    from src.data import GripperDataset
+    from torch.utils.data import DataLoader
+    
+    eval_dataset = GripperDataset(X_scaled, y)
+    eval_loader = DataLoader(eval_dataset, batch_size=hyperparams['batch_size'], shuffle=False)
     
     # Run comprehensive evaluation
     metrics, predictions, targets = evaluate_comprehensive(model, eval_loader, device)
@@ -268,7 +287,7 @@ def main():
         'model_path': args.model_path,
         'config_path': args.config_path,
         'device': str(device),
-        'eval_samples': len(X_test),
+        'eval_samples': len(X_scaled),
         'hyperparams': hyperparams
     }
     save_evaluation_report(metrics, model_info, args.output_dir)

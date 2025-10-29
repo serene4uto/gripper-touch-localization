@@ -252,11 +252,11 @@ class OptunaTuner:
             'hidden_channels': self.best_params['hidden_channels'],
             'kernel_size': self.best_params['kernel_size'],
             'dropout': self.best_params['dropout'],
-            'epochs': self.best_params['epochs'],  # Use tuned epochs value
+            'epochs': self.tune_config['training']['epochs'],  # Use fixed epochs value from config
             'batch_size': self.best_params['batch_size'],
             'learning_rate': self.best_params['learning_rate'],
             'weight_decay': self.best_params['weight_decay'],
-            'test_size': self.best_params['test_size']
+            'test_size': self.tune_config['data']['test_size']  # Use fixed test_size from config
         }
         
         # Save as YAML file

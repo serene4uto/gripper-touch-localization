@@ -2,5 +2,6 @@
 runs/
 ref/
 tune_results/
+eval_results/
 
 __pycache__/

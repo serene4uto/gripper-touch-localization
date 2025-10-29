@@ -10,8 +10,8 @@ from .data import load_data, get_dataloaders
 from .model import ConvLSTMRegressor
 
 def train_model(model, train_loader, val_loader, epochs=250, lr=0.0001, device='cpu', 
-                log_dir=None, weight_decay=0.001, save_dir=None, save_every=50, start_epoch=0):
-    """Training loop with TensorBoard support and checkpointing"""
+                log_dir=None, weight_decay=0.001, save_dir=None, start_epoch=0):
+    """Training loop with TensorBoard support and checkpointing (best and last only)"""
     model = model.to(device)
     criterion = nn.MSELoss()
     optimizer = optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
@@ -109,9 +109,7 @@ def train_model(model, train_loader, val_loader, epochs=250, lr=0.0001, device='
             if save_dir:
                 save_checkpoint(model, optimizer, epoch, val_loss, save_dir, 'best')
         
-        # Save checkpoint every N epochs
-        if save_dir and (epoch + 1) % save_every == 0:
-            save_checkpoint(model, optimizer, epoch, val_loss, save_dir, f'epoch_{epoch+1}')
+        # Note: Only saving best and last checkpoints, no periodic saves
         
         # Update epoch progress bar
         epoch_pbar.set_postfix({
@@ -207,7 +205,7 @@ def load_checkpoint(checkpoint_path, model=None, optimizer=None, device='cpu'):
 
 def resume_training(model, train_loader, val_loader, checkpoint_path, 
                    epochs=250, lr=0.0001, device='cpu', log_dir=None, 
-                   weight_decay=0.001, save_dir=None, save_every=50):
+                   weight_decay=0.001, save_dir=None):
     """Resume training from checkpoint"""
     print(f"🔄 Resuming training from: {checkpoint_path}")
     
@@ -224,4 +222,4 @@ def resume_training(model, train_loader, val_loader, checkpoint_path,
     
     # Continue training
     return train_model(model, train_loader, val_loader, epochs, lr, device, 
-                      log_dir, weight_decay, save_dir, save_every, start_epoch)
+                      log_dir, weight_decay, save_dir, start_epoch)

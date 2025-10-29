@@ -20,7 +20,7 @@ def parse_args():
     
     # Optional arguments
     parser.add_argument('--tune-config', type=str, 
-                        default='configs/tune/tune_space.yaml',
+                        default='configs/tune/default_tune_cfg.yaml',
                         help='Path to tuning configuration file')
     
     parser.add_argument('--exp-name', type=str, default=None,

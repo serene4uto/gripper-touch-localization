@@ -68,8 +68,8 @@ class OptunaTuner:
                     save_dir=None  # No checkpointing during tuning
                 )
                 
-                # Return validation MAE as the metric to minimize
-                final_val_mae = val_maes[-1]
+                # Return best validation MAE as the metric to minimize
+                final_val_mae = min(val_maes)
                 
                 # Report intermediate values for pruning
                 for epoch, (train_loss, val_loss, train_mae, val_mae) in enumerate(
@@ -101,8 +101,16 @@ class OptunaTuner:
         kernel_choice = trial.suggest_categorical(
             'kernel_size', model_config['kernel_size']['choices']
         )
-        # Convert list to tuple for the model
-        params['kernel_size'] = tuple(kernel_choice)
+        # Convert to tuple for the model (handle both list and tuple cases)
+        if isinstance(kernel_choice, (list, tuple)):
+            params['kernel_size'] = tuple(kernel_choice)
+        else:
+            # If it's a string representation, try to parse it safely
+            try:
+                params['kernel_size'] = ast.literal_eval(kernel_choice)
+            except:
+                # Fallback: assume it's a list-like string
+                params['kernel_size'] = (1, 3)  # Default fallback
         params['dropout'] = trial.suggest_float(
             'dropout', 
             model_config['dropout']['low'], 
@@ -243,7 +251,7 @@ class OptunaTuner:
             'hidden_channels': self.best_params['hidden_channels'],
             'kernel_size': self.best_params['kernel_size'],
             'dropout': self.best_params['dropout'],
-            'epochs': 250,  # Default epochs for training
+            'epochs': self.best_params['epochs'],  # Use tuned epochs value
             'batch_size': self.best_params['batch_size'],
             'learning_rate': self.best_params['learning_rate'],
             'weight_decay': self.best_params['weight_decay'],
@@ -319,56 +327,57 @@ class OptunaTuner:
 
 def create_tune_config_template(output_path: str):
     """Create a template tuning configuration file"""
-    template = {
-        'model': {
-            'hidden_channels': {
-                'type': 'categorical',
-                'choices': [32, 64, 128, 256]
-            },
-            'kernel_size': {
-                'type': 'categorical',
-                'choices': [[1, 3], [3, 3], [5, 5]]
-            },
-            'dropout': {
-                'type': 'uniform',
-                'low': 0.1,
-                'high': 0.7
-            }
-        },
-        'training': {
-            'learning_rate': {
-                'type': 'loguniform',
-                'low': 1e-5,
-                'high': 1e-2
-            },
-            'weight_decay': {
-                'type': 'loguniform',
-                'low': 1e-5,
-                'high': 1e-1
-            },
-            'batch_size': {
-                'type': 'categorical',
-                'choices': [4, 8, 16, 32]
-            }
-        },
-        'data': {
-            'test_size': {
-                'type': 'uniform',
-                'low': 0.1,
-                'high': 0.4
-            }
-        },
-        'tuning': {
-            'n_trials': 50,
-            'timeout': 3600,
-            'direction': 'minimize',
-            'metric': 'val_mae',
-            'pruner': 'median',
-            'sampler': 'tpe'
-        }
-    }
+    template_content = """# Optuna Hyperparameter Tuning Space Configuration
+# Define the search space for hyperparameter optimization
+
+# Model Architecture Parameters
+model:
+  hidden_channels:
+    type: "categorical"
+    choices: [32, 64, 128, 256]
+  
+  kernel_size:
+    type: "categorical" 
+    choices: [(1, 3), (3, 3), (5, 5)]
+  
+  dropout:
+    type: "uniform"
+    low: 0.1
+    high: 0.7
+
+# Training Hyperparameters
+training:
+  learning_rate:
+    type: "loguniform"
+    low: 0.00001
+    high: 0.01
+  
+  weight_decay:
+    type: "loguniform"
+    low: 0.00001
+    high: 0.1
+  
+  batch_size:
+    type: "categorical"
+    choices: [4, 8, 16, 32]
+  
+  epochs: 50  # Fixed epochs for tuning (not tunable)
+
+# Data Parameters (fixed - not tuned)
+data:
+  test_size: 0.3
+
+# Tuning Configuration
+tuning:
+  n_trials: 50
+  timeout: 3600  # 1 hour timeout
+  direction: "minimize"  # minimize MAE
+  metric: "val_mae"  # target metric for optimization
+  pruner: "median"  # pruning strategy
+  sampler: "tpe"  # sampling strategy
+"""
     
     with open(output_path, 'w') as f:
-        yaml.dump(template, f, default_flow_style=False, indent=2)
+        f.write(template_content)
     
     print(f"📝 Tuning config template created: {output_path}")

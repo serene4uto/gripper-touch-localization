@@ -20,7 +20,7 @@ def parse_args():
     parser = argparse.ArgumentParser(description='Train ConvLSTM for gripper touch localization')
     
     # Config file argument
-    parser.add_argument('--train-config', type=str, default='/workspaces/gripper-touch-localization/config/train/default_cfg.yaml',
+    parser.add_argument('--train-config', type=str, default='configs/train/default_cfg.yaml',
                         help='Path to YAML training configuration file (default: /workspaces/gripper-touch-localization/config/train/default_cfg.yaml)')
     
     # Data arguments

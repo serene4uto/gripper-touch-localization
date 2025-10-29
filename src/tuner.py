@@ -59,7 +59,7 @@ class OptunaTuner:
             
             # Train model with early stopping based on validation R² score
             try:
-                train_losses, val_losses, train_maes, val_maes, train_rmses, val_rmses, train_r2s, val_r2s, train_mapes, val_mapes = train_model(
+                train_losses, val_losses, train_maes, val_maes, train_rmses, val_rmses, train_r2s, val_r2s, train_mapes, val_mapes, best_metrics = train_model(
                     model, train_loader, test_loader,
                     epochs=params['epochs'],
                     lr=params['learning_rate'],
@@ -72,21 +72,21 @@ class OptunaTuner:
                 # Return best validation R² score as the metric to maximize
                 final_val_r2 = max(val_r2s)
                 
-                # Report intermediate values for pruning (using negative R² since Optuna minimizes)
+                # Report intermediate values for pruning
                 for epoch, (train_loss, val_loss, train_mae, val_mae, train_r2, val_r2) in enumerate(
                     zip(train_losses, val_losses, train_maes, val_maes, train_r2s, val_r2s)
                 ):
-                    trial.report(-val_r2, epoch)  # Negative because we want to maximize R²
+                    trial.report(val_r2, epoch)  # Report R² directly
                     
                     # Check if trial should be pruned
                     if trial.should_prune():
                         raise optuna.TrialPruned()
                 
-                return -final_val_r2  # Return negative because Optuna minimizes
+                return final_val_r2  # Return R² directly for maximization
                 
             except Exception as e:
                 print(f"Trial failed with error: {e}")
-                return float('inf')
+                return -float('inf')  # Very bad R² score for failed trials
         
         return objective
     

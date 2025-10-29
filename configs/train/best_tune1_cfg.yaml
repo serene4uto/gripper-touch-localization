@@ -1,0 +1,16 @@
+# ConvLSTM Training Configuration
+# Best hyperparameters from Optuna tuning
+
+# Model Architecture
+hidden_channels: 32
+kernel_size: [5, 5]
+dropout: 0.2682073967994673
+
+# Training Hyperparameters
+epochs: 250
+batch_size: 8
+learning_rate: 0.0013999223701603282
+weight_decay: 1.2171096975365249e-05
+
+# Data Split
+test_size: 0.3
